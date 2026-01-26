@@ -23,7 +23,7 @@ Decision Helper는 상황과 선택지를 입력하면 기준별 점수를 비�
 - Next.js App Router: 서버/클라이언트 컴포넌트 분리와 라우팅 단순화
 - Tailwind CSS: 일관된 디자인 시스템을 빠르게 적용
 - Supabase(Auth/DB): 인증과 DB를 한 곳에서 관리
-- @supabase/ssr: 쿠키 기반 세션을 SSR에서 안정적으로 동기화
+- @supabase/ssr: 서버 컴포넌트에서 Supabase 클라이언트 생성에 사용
 
 ## 4. 로컬 실행 방법
 필수 설치
@@ -99,7 +99,6 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 ### Supabase 클라이언트
 - 클라이언트: `app/lib/supabase/client.ts`
 - 서버: `app/lib/supabase/server.ts` (getUser 포함)
-- 미들웨어: `middleware.ts` (SSR 세션 쿠키 동기화)
 
 ### 계산 로직/키워드 룰
 - `app/lib/logic.ts`
@@ -198,7 +197,6 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 - `app/lib/shareSlug.ts`
 - `app/lib/supabase/client.ts`
 - `app/lib/supabase/server.ts`
-- `middleware.ts`
 - `app/globals.css`
 - `supabase/sql/decisions-rls.sql`
 - `supabase/sql/decisions-updated-at.sql`
