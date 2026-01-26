@@ -1,47 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "../lib/supabase/client";
 
-type GlobalHeaderProps = {
-  userEmail?: string | null;
-};
-
-export default function GlobalHeader({ userEmail }: GlobalHeaderProps) {
+export default function GlobalHeader() {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
-  const [email, setEmail] = useState<string | null>(userEmail ?? null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  useEffect(() => {
-    let mounted = true;
-
-    const syncSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!mounted) return;
-      setEmail(session?.user?.email ?? null);
-    };
-
-    syncSession();
-
-    const { data: subscription } = supabase.auth.onAuthStateChange(
-      () => syncSession()
-    );
-
-    return () => {
-      mounted = false;
-      subscription.subscription.unsubscribe();
-    };
-  }, [supabase]);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setEmail(null);
+  const handleLogout = () => {
+    setIsLoggedIn(false);
     router.push("/");
-    router.refresh();
   };
 
   return (
@@ -51,7 +20,7 @@ export default function GlobalHeader({ userEmail }: GlobalHeaderProps) {
           Decision Helper
         </Link>
         <nav className="flex items-center gap-3 text-sm font-semibold">
-          {email ? (
+          {isLoggedIn ? (
             <>
               <Link
                 href="/dashboard"

@@ -18,11 +18,9 @@ import {
 } from "../../lib/storage";
 import { useDraft } from "../../lib/useDraft";
 import { createUniqueShareSlug } from "../../lib/shareSlug";
-import { createClient } from "../../lib/supabase/client";
 
 export default function ScorePage() {
   const router = useRouter();
-  const supabase = createClient();
   const { draft, setDraft, hydrated } = useDraft();
   const [savedDecisionId, setSavedDecisionId] = useState<string | null>(null);
   const [shareSlug, setShareSlug] = useState<string | null>(null);
@@ -119,22 +117,14 @@ export default function ScorePage() {
     return stored;
   };
 
-  const requireLogin = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) return true;
-    saveDraft(draft);
-    const next = encodeURIComponent("/new/score");
-    router.push(`/login?next=${next}`);
-    return false;
-  };
+  const requireLogin = async () => true;
 
   const handleSave = async () => {
     if (!(await requireLogin())) return;
     await persistDecision(false);
     setNotice("저장되었습니다. 대시보드에서 확인할 수 있어요.");
     clearDraft();
+    router.push("/dashboard");
   };
 
   const handleShare = async () => {

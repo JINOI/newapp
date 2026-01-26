@@ -16,20 +16,6 @@ export default function Home() {
               <p className="text-lg font-semibold">투명한 결정 도우미</p>
             </div>
           </div>
-          <nav className="flex flex-wrap gap-3 text-sm font-medium">
-            <Link
-              href="/dashboard"
-              className="rounded-full border border-[var(--ink)]/20 px-4 py-2 transition hover:border-[var(--ink)]"
-            >
-              내 목록
-            </Link>
-            <Link
-              href="/login"
-              className="rounded-full border border-[var(--ink)]/20 px-4 py-2 transition hover:border-[var(--ink)]"
-            >
-              로그인
-            </Link>
-          </nav>
         </header>
 
         <main className="grid gap-10 md:grid-cols-[1.1fr_0.9fr]">
@@ -70,7 +56,7 @@ export default function Home() {
                 </div>
                 <div className="flex items-start gap-3">
                   <span className="mt-1 h-2 w-2 rounded-full bg-[var(--accent)]" />
-                  <p>가중합 점수와 기여도 상위 2개 기준까지 확인</p>
+                  <p>가중합 점수에 따른 순위 확인</p>
                 </div>
                 <div className="flex items-start gap-3">
                   <span className="mt-1 h-2 w-2 rounded-full bg-[var(--accent)]" />
@@ -85,9 +71,6 @@ export default function Home() {
             <div className="flex flex-col gap-5">
               <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
                 <span>DEMO SNAPSHOT</span>
-                <span className="rounded-full border border-[var(--ink)]/10 px-2 py-1">
-                  결과 미리보기
-                </span>
               </div>
               <h2 className="text-2xl font-semibold">오늘 저녁 뭐할까?</h2>
               <div className="grid gap-3 text-sm text-[var(--muted)]">

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { DM_Serif_Display, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import GlobalHeader from "./components/GlobalHeader";
-import { getUser } from "./lib/supabase/server";
 
 const display = DM_Serif_Display({
   subsets: ["latin"],
@@ -26,12 +25,10 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const user = await getUser();
-
   return (
     <html lang="ko">
       <body className={`${display.variable} ${sans.variable} antialiased`}>
-        <GlobalHeader userEmail={user?.email ?? null} />
+        <GlobalHeader />
         {children}
       </body>
     </html>

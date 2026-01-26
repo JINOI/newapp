@@ -1,39 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "../lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const supabase = useMemo(() => createClient(), []);
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
-    const sync = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!mounted) return;
-      if (session?.user) router.push("/");
-    };
-    sync();
-    const { data: subscription } = supabase.auth.onAuthStateChange(sync);
-    return () => {
-      mounted = false;
-      subscription.subscription.unsubscribe();
-    };
-  }, [router, supabase]);
-
-  const handleSubmit = async () => {
+  const handleSubmit = (event?: React.FormEvent) => {
+    event?.preventDefault();
+    if (loading) return;
     setError(null);
+    setNotice(null);
     setLoading(true);
 
     const trimmedEmail = email.trim();
@@ -43,36 +27,13 @@ export default function LoginPage() {
       return;
     }
 
-    const result =
+    setNotice(
       mode === "login"
-        ? await supabase.auth.signInWithPassword({
-            email: trimmedEmail,
-            password,
-          })
-        : await supabase.auth.signUp({
-            email: trimmedEmail,
-            password,
-          });
-
-    if (result.error) {
-      setError(result.error.message || "로그인/회원가입에 실패했습니다.");
-      setLoading(false);
-      return;
-    }
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) {
-      setError("로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.");
-      setLoading(false);
-      return;
-    }
-
-    const next =
-      mode === "login" ? "/" : searchParams.get("next") ?? "/dashboard";
-    router.push(next);
-    router.refresh();
+        ? "데모 화면입니다. 로그인 기능은 비활성화되어 있습니다."
+        : "데모 화면입니다. 회원가입 기능은 비활성화되어 있습니다."
+    );
+    setLoading(false);
+    router.push("/");
   };
 
   return (
@@ -119,7 +80,7 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <div className="grid gap-3">
+          <form className="grid gap-3" onSubmit={handleSubmit}>
             <label className="grid gap-2 text-sm font-semibold">
               이메일
               <input
@@ -140,18 +101,22 @@ export default function LoginPage() {
               />
             </label>
             <button
-              type="button"
-              onClick={handleSubmit}
+              type="submit"
               disabled={loading}
               className="btn-ink rounded-full bg-[var(--ink)] px-6 py-3 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(27,27,26,0.28)] disabled:opacity-60"
             >
               {mode === "login" ? "로그인" : "회원가입"}
             </button>
-          </div>
+          </form>
 
           {error && (
             <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
+              {String(error)}
+            </p>
+          )}
+          {notice && (
+            <p className="mt-4 rounded-2xl border border-[var(--accent)]/20 bg-[var(--accent)]/10 px-4 py-3 text-sm text-[var(--ink)]">
+              {notice}
             </p>
           )}
         </section>
