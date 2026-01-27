@@ -1,14 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createClient } from "../lib/supabase/client";
 
 export default function GlobalHeader() {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  const handleLogout = () => {
+  useEffect(() => {
+    const supabase = createClient();
+    let isActive = true;
+
+    const syncSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (isActive) setIsLoggedIn(Boolean(data.session));
+    };
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(() => {
+      syncSession();
+    });
+
+    syncSession();
+
+    return () => {
+      isActive = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
     setIsLoggedIn(false);
     router.push("/");
   };

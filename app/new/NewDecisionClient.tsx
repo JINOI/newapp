@@ -3,7 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { buildCriteriaFromContext, normalizeScores } from "../lib/logic";
+import {
+  applyKeywordWeights,
+  buildCriteriaFromContext,
+  normalizeScores,
+} from "../lib/logic";
 import type { Option } from "../lib/types";
 import { useDraft } from "../lib/useDraft";
 
@@ -106,7 +110,7 @@ export default function NewDecisionClient() {
     }
 
     const criteria = draft?.criteria?.length
-      ? draft.criteria
+      ? applyKeywordWeights(draft.criteria, context)
       : buildCriteriaFromContext(context);
 
     const scores = normalizeScores(trimmedOptions, criteria, draft?.scores ?? {});

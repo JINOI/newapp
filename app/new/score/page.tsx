@@ -9,15 +9,13 @@ import {
   recommendOption,
   topContributions,
 } from "../../lib/logic";
-import type { StoredDecision } from "../../lib/types";
 import {
   clearDraft,
-  findDecisionBySlug,
-  saveDraft,
-  upsertDecision,
 } from "../../lib/storage";
 import { useDraft } from "../../lib/useDraft";
-import { createUniqueShareSlug } from "../../lib/shareSlug";
+import { insertWithSlugRetry } from "../../lib/shareSlug";
+import { createClient } from "../../lib/supabase/client";
+import { buildDecisionPayload, mapDecisionRow } from "../../lib/decisions";
 
 export default function ScorePage() {
   const router = useRouter();
@@ -91,48 +89,103 @@ export default function ScorePage() {
     setDraft({ ...draft, scores: nextScores });
   };
 
+  const requireLogin = async () => {
+    const supabase = createClient();
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) {
+      setNotice("저장/공유를 위해 로그인해주세요.");
+      router.push("/login");
+      return null;
+    }
+    return data.user;
+  };
+
   const persistDecision = async (isPublic: boolean) => {
-    const now = new Date().toISOString();
+    const user = await requireLogin();
+    if (!user) return null;
+
+    const supabase = createClient();
     const decisionId = savedDecisionId ?? crypto.randomUUID();
-    const slug =
-      shareSlug ??
-      (await createUniqueShareSlug({
-        exists: (candidate) => Boolean(findDecisionBySlug(candidate)),
-      }));
-    const stored: StoredDecision = {
-      ...draft,
-      id: decisionId,
-      createdAt: now,
-      updatedAt: now,
-      totalScores: totals,
+    const payload = buildDecisionPayload({
+      draft,
+      userId: user.id,
+      decisionId,
+      totals,
       recommendedOptionId: recommendedId,
-      shareSlug: slug,
       isPublic,
-    };
+      shareSlug: shareSlug ?? undefined,
+    });
 
-    upsertDecision(stored);
-    setSavedDecisionId(decisionId);
-    setShareSlug(slug);
+    if (!savedDecisionId) {
+      const inserted = await insertWithSlugRetry({
+        supabase,
+        table: "decisions",
+        payload,
+        slugKey: "share_slug",
+      });
+      const stored = mapDecisionRow(inserted);
+      setSavedDecisionId(stored.id);
+      setShareSlug(stored.shareSlug);
+      return stored;
+    }
 
+    const { id: _id, user_id: _userId, share_slug: _shareSlug, ...updateBody } =
+      payload;
+    const { data, error } = await supabase
+      .from("decisions")
+      .update(updateBody)
+      .eq("id", decisionId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    const stored = mapDecisionRow(data);
+    setShareSlug(stored.shareSlug);
     return stored;
   };
 
-  const requireLogin = async () => true;
-
   const handleSave = async () => {
-    if (!(await requireLogin())) return;
-    await persistDecision(false);
-    setNotice("저장되었습니다. 대시보드에서 확인할 수 있어요.");
-    clearDraft();
-    router.push("/dashboard");
+    try {
+      const stored = await persistDecision(false);
+      if (!stored) return;
+      setNotice("저장되었습니다. 이제 공유 링크를 생성할 수 있어요.");
+      setSavedDecisionId(stored.id);
+      setShareSlug(stored.shareSlug);
+    } catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : "저장에 실패했습니다."
+      );
+    }
   };
 
   const handleShare = async () => {
-    if (!(await requireLogin())) return;
-    const stored = await persistDecision(true);
-    setNotice("공유 링크가 생성되었습니다.");
-    clearDraft();
-    router.push(`/d/${stored.shareSlug}`);
+    try {
+      if (!savedDecisionId || !shareSlug) {
+        setNotice("먼저 저장을 완료해주세요.");
+        return;
+      }
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("decisions")
+        .update({ is_public: true })
+        .eq("id", savedDecisionId)
+        .select()
+        .single();
+      if (error || !data) {
+        throw error ?? new Error("공유 링크 생성에 실패했습니다.");
+      }
+      const stored = mapDecisionRow(data);
+      setShareSlug(stored.shareSlug);
+      setNotice("공유 링크가 생성되었습니다.");
+      clearDraft();
+      router.push(`/d/${stored.shareSlug}`);
+    } catch (error) {
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "공유 링크 생성에 실패했습니다."
+      );
+    }
   };
 
   return (
@@ -291,13 +344,23 @@ export default function ScorePage() {
             >
               저장
             </button>
-            <button
-              type="button"
-              onClick={handleShare}
-              className="rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white"
-            >
-              공유 링크 생성
-            </button>
+            {savedDecisionId && shareSlug && (
+              <button
+                type="button"
+                onClick={handleShare}
+                className="rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white"
+              >
+                공유 링크 생성
+              </button>
+            )}
+            {savedDecisionId && (
+              <Link
+                href="/dashboard"
+                className="rounded-full border border-[var(--ink)]/20 px-6 py-3 text-sm font-semibold"
+              >
+                대시보드로 이동
+              </Link>
+            )}
             <Link
               href="/new?fresh=1"
               className="rounded-full border border-[var(--ink)]/20 px-6 py-3 text-sm font-semibold"

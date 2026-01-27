@@ -3,21 +3,50 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { loadDecisions, removeDecision, updateDecision } from "../lib/storage";
 import type { StoredDecision } from "../lib/types";
+import { createClient } from "../lib/supabase/client";
+import { mapDecisionRow } from "../lib/decisions";
 
-type DashboardClientProps = {
-  userEmail?: string | null;
-};
-
-export default function DashboardClient({ userEmail }: DashboardClientProps) {
+export default function DashboardClient() {
   const router = useRouter();
   const [decisions, setDecisions] = useState<StoredDecision[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    setDecisions(loadDecisions());
-  }, []);
+    const supabase = createClient();
+    let isActive = true;
+
+    const load = async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        router.push("/login");
+        return;
+      }
+
+      if (isActive) setUserEmail(userData.user.email ?? null);
+
+      const { data, error } = await supabase
+        .from("decisions")
+        .select("*")
+        .order("updated_at", { ascending: false });
+
+      if (error) {
+        if (isActive) setNotice("결정 목록을 불러오지 못했습니다.");
+        return;
+      }
+
+      if (isActive) {
+        setDecisions((data ?? []).map(mapDecisionRow));
+      }
+    };
+
+    load();
+
+    return () => {
+      isActive = false;
+    };
+  }, [router]);
 
   const handleCopy = async (slug: string) => {
     const url = `${window.location.origin}/d/${slug}`;
@@ -38,19 +67,43 @@ export default function DashboardClient({ userEmail }: DashboardClientProps) {
   };
 
   const handleDelete = (id: string) => {
-    removeDecision(id);
-    setDecisions(loadDecisions());
+    const supabase = createClient();
+    supabase
+      .from("decisions")
+      .delete()
+      .eq("id", id)
+      .then(({ error }) => {
+        if (error) {
+          setNotice("삭제에 실패했습니다.");
+          return;
+        }
+        setDecisions((prev) => prev.filter((item) => item.id !== id));
+      });
   };
 
   const handleTogglePublic = (id: string, nextValue: boolean) => {
-    const updated = updateDecision(id, { isPublic: nextValue });
-    if (!updated) return;
-    setDecisions(loadDecisions());
-    setNotice(
-      nextValue
-        ? "공개 상태로 전환되었습니다. 공유 링크가 활성화됩니다."
-        : "비공개 처리되었습니다. 공유 링크 접근이 차단됩니다."
-    );
+    const supabase = createClient();
+    supabase
+      .from("decisions")
+      .update({ is_public: nextValue })
+      .eq("id", id)
+      .select()
+      .single()
+      .then(({ data, error }) => {
+        if (error || !data) {
+          setNotice("공개 상태 변경에 실패했습니다.");
+          return;
+        }
+        const updated = mapDecisionRow(data);
+        setDecisions((prev) =>
+          prev.map((item) => (item.id === id ? updated : item))
+        );
+        setNotice(
+          nextValue
+            ? "공개 상태로 전환되었습니다. 공유 링크가 활성화됩니다."
+            : "비공개 처리되었습니다. 공유 링크 접근이 차단됩니다."
+        );
+      });
   };
 
   return (

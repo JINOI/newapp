@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createClient } from "../lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,7 +14,22 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const handleSubmit = (event?: React.FormEvent) => {
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          router.push("/");
+        }
+      } catch {
+        // Ignore: env not set yet or client init error should surface on submit.
+      }
+    };
+    run();
+  }, [router]);
+
+  const handleSubmit = async (event?: React.FormEvent) => {
     event?.preventDefault();
     if (loading) return;
     setError(null);
@@ -27,13 +43,37 @@ export default function LoginPage() {
       return;
     }
 
-    setNotice(
-      mode === "login"
-        ? "데모 화면입니다. 로그인 기능은 비활성화되어 있습니다."
-        : "데모 화면입니다. 회원가입 기능은 비활성화되어 있습니다."
-    );
-    setLoading(false);
-    router.push("/");
+    try {
+      const supabase = createClient();
+      if (mode === "login") {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: trimmedEmail,
+          password,
+        });
+        if (signInError) throw signInError;
+        router.push("/");
+        return;
+      }
+
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: trimmedEmail,
+        password,
+      });
+      if (signUpError) throw signUpError;
+
+      if (!data.session) {
+        setNotice("가입 메일을 확인해주세요. 메일 확인 후 로그인할 수 있습니다.");
+        setMode("login");
+      } else {
+        router.push("/");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "로그인에 실패했습니다.";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -105,7 +145,11 @@ export default function LoginPage() {
               disabled={loading}
               className="btn-ink rounded-full bg-[var(--ink)] px-6 py-3 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(27,27,26,0.28)] disabled:opacity-60"
             >
-              {mode === "login" ? "로그인" : "회원가입"}
+              {loading
+                ? "처리중..."
+                : mode === "login"
+                  ? "로그인"
+                  : "회원가입"}
             </button>
           </form>
 

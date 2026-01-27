@@ -5,8 +5,10 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import DecisionTable from "../../components/DecisionTable";
 import { computeTotals, topContributions, recommendOption } from "../../lib/logic";
-import { findDecisionBySlug, saveDraft } from "../../lib/storage";
+import { saveDraft } from "../../lib/storage";
 import type { StoredDecision } from "../../lib/types";
+import { createClient } from "../../lib/supabase/client";
+import { mapDecisionRow } from "../../lib/decisions";
 
 export default function SharePage() {
   const params = useParams();
@@ -16,8 +18,29 @@ export default function SharePage() {
 
   useEffect(() => {
     if (!slug) return;
-    const stored = findDecisionBySlug(slug);
-    if (stored?.isPublic) setDecision(stored);
+    const supabase = createClient();
+    let isActive = true;
+
+    const load = async () => {
+      const { data, error } = await supabase
+        .from("decisions")
+        .select("*")
+        .eq("share_slug", slug)
+        .single();
+
+      if (error || !data) {
+        if (isActive) setDecision(null);
+        return;
+      }
+
+      if (isActive) setDecision(mapDecisionRow(data));
+    };
+
+    load();
+
+    return () => {
+      isActive = false;
+    };
   }, [slug]);
 
   if (!decision) {

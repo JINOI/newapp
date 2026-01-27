@@ -21,13 +21,19 @@
 
 body {
   background:
-    radial-gradient(circle at 18% 12%, rgba(255, 247, 236, 0.8), transparent 45%),
-    radial-gradient(circle at 70% 0%, rgba(215, 226, 243, 0.28), transparent 50%),
+    radial-gradient(circle at 18% 12%, rgba(255, 247, 235, 0.9), transparent 48%),
+    radial-gradient(circle at 78% 6%, rgba(234, 219, 198, 0.55), transparent 52%),
+    radial-gradient(circle at 60% 72%, rgba(224, 204, 183, 0.38), transparent 55%),
     var(--paper);
+  background-size: 160% 160%, 190% 190%, 180% 180%, auto;
+  background-position: 0% 0%, 100% 0%, 50% 100%, 0 0;
+  animation: bg-drift 22s ease-in-out infinite;
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
   position: relative;
   min-height: 100vh;
+  isolation: isolate;
+  overflow-x: hidden;
 }
 
 * {
@@ -61,8 +67,27 @@ body::before {
       transparent 1px,
       transparent 4px
     );
-  opacity: 0.25;
+  background-size: 240px 240px, 320px 320px;
+  opacity: 0.35;
   mix-blend-mode: soft-light;
+  animation: grain-shift 18s linear infinite;
+  z-index: -1;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: -20% -10%;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 26%, rgba(242, 205, 166, 0.24), transparent 42%),
+    radial-gradient(circle at 82% 18%, rgba(231, 212, 186, 0.22), transparent 46%),
+    radial-gradient(circle at 58% 82%, rgba(215, 193, 164, 0.22), transparent 48%);
+  filter: blur(10px);
+  opacity: 0.9;
+  mix-blend-mode: multiply;
+  animation: aura-float 18s ease-in-out infinite;
+  z-index: -1;
 }
 
 .card {
@@ -94,4 +119,45 @@ body::before {
 
 .table-surface tbody tr:hover {
   background: rgba(255, 255, 255, 0.04);
+}
+
+@keyframes bg-drift {
+  0% {
+    background-position: 0% 0%, 100% 0%, 50% 100%, 0 0;
+  }
+  50% {
+    background-position: 35% 18%, 65% 28%, 40% 85%, 0 0;
+  }
+  100% {
+    background-position: 0% 0%, 100% 0%, 50% 100%, 0 0;
+  }
+}
+
+@keyframes grain-shift {
+  0% {
+    background-position: 0 0, 0 0;
+  }
+  100% {
+    background-position: 240px 240px, -320px 160px;
+  }
+}
+
+@keyframes aura-float {
+  0% {
+    transform: translate3d(-6%, -4%, 0) scale(1.02);
+  }
+  50% {
+    transform: translate3d(6%, 4%, 0) scale(1.06);
+  }
+  100% {
+    transform: translate3d(-6%, -4%, 0) scale(1.02);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body,
+  body::before,
+  body::after {
+    animation: none !important;
+  }
 }
